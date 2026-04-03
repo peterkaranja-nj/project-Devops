@@ -2,30 +2,48 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+    # 1. Get your code
     - name: Checkout code
       uses: actions/checkout@v3
 
+    # 2. Set up Python
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.9"
 
+    # 3. Install dependencies
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
 
+    # 4. Run app test
     - name: Run app test
       run: |
-        python app.py & sleep 5
+        python app.py & 
+        sleep 10
         curl http://localhost:5000
 
+    # 5. Login to Docker Hub
+    - name: Login to Docker Hub
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    # 6. Build Docker image
     - name: Build Docker image
       run: |
-        docker build -t devops-app .
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-app:latest .
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-app:${{ github.sha }} .
+
+    # 7. Push Docker image
+    - name: Push Docker image
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/devops-app:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/devops-app:${{ github.sha }}
